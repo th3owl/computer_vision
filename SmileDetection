@@ -1,0 +1,91 @@
+import dlib,cv2
+import numpy as np
+import math
+
+################################################################
+# Method:                                                      #
+# 1. To detect the mouth in an image and draw tha landmarks.   #
+# 2. Detect whether or not the person in the image is smiling  #
+# Note:                                                        #
+# This needs a lot of refinement to incrase the accuracy.      #
+# It purely relies on math instead of using                    #
+# Deep Learning or Machine Learning libraries                  #   
+################################################################
+
+def renderSmile(im, landmarks, ratio,color=(0, 0, 0), radius=3):
+    for i in range(48, 68):
+        point = (landmarks.part(i).x, landmarks.part(i).y)
+        cv2.circle(im, point, radius, color, -1)
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    org = (20, 30)
+    fontScale = 1
+    color = (60,20,220)
+    thickness = 2
+    if (ratio > 45.0):
+        cv2.putText(im, 'Smiling <3', org, font, fontScale, color, thickness, cv2.LINE_AA)
+    else:
+        cv2.putText(im, 'Not Smiling', org, font, fontScale, color, thickness, cv2.LINE_AA)
+
+PREDICTOR_PATH = "shape_predictor_68_face_landmarks.dat"
+faceDetector = dlib.get_frontal_face_detector()
+landmarkDetector = dlib.shape_predictor(PREDICTOR_PATH)
+
+
+imageFilename = "JuliaRoberts_NS.jpg"
+#imageFilename = "JuliaRoberts.png"
+im= cv2.imread(imageFilename)
+
+###############################################################
+# Resizing image to a smaller window for faster face detection#
+###############################################################
+
+height = im.shape[0]
+IMAGE_RESIZE = float(height)/450
+
+im = cv2.resize(im, None, fx=1.0/IMAGE_RESIZE, fy=1.0/IMAGE_RESIZE,interpolation = cv2.INTER_LINEAR)
+
+###############################################################
+# Detect Faces                                                #
+###############################################################
+faceRects = faceDetector(im, 1)
+print("Number of faces detected: ",len(faceRects))
+
+#################################################################
+# Loop over the detected faces and compute the landmarks needed #
+# Mouth Start : Landmark 48                                     #
+# Mouth End   : Landmark 54                                     #
+# Jaw Start   : Landmark 0                                      #
+# Jaw End     : Landmark 16                                     #   
+#################################################################
+
+for (i, faces) in enumerate(faceRects):
+  landmarks = landmarkDetector(im, faces)
+   
+  x_1 = landmarks.parts()[48].x
+  x_2 = landmarks.parts()[54].x
+
+  y_1 = landmarks.parts()[48].y
+  y_2 = landmarks.parts()[54].y
+
+  mouth_distance=math.sqrt((pow((x_2-x_1),2))+(pow((y_2-y_1),2)))
+
+  x_1 = landmarks.parts()[0].x
+  x_2 = landmarks.parts()[16].x
+
+  y_1 = landmarks.parts()[0].y
+  y_2 = landmarks.parts()[16].y
+ 
+  jaw_distance=math.sqrt((pow((x_2-x_1),2))+(pow((y_2-y_1),2)))
+ 
+  ratio = (mouth_distance/jaw_distance) * 100
+  print("Ratio", ratio)
+ 
+  renderSmile(im, landmarks,ratio)
+
+#outputFileName = "familyLandmarks.jpg"
+#print("Saving output image to", outputFileName)
+#cv2.imwrite(outputFileName, im)
+cv2.imshow("Facial Landmark detector", im)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
